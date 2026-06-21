@@ -42,6 +42,7 @@ tbody tr:hover td{background:#f9f9f8}
 .ba{background:#faeeda;color:#854f0b}
 .bb{background:#e6f1fb;color:#185fa5}
 .bx{background:#f0f0ee;color:#555}
+.bp{background:#f3e8fd;color:#7e3ea3}
 .fr{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
 .fg{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
 .fg label{font-size:11px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.04em}
@@ -80,6 +81,10 @@ input::placeholder{color:#bbb}
 .spin{display:inline-block;width:14px;height:14px;border:2px solid #ddd;border-top-color:#333;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:6px}
 @keyframes sp{to{transform:rotate(360deg)}}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:200;display:none}
+.chk-row{display:flex;align-items:center;gap:8px;margin-bottom:14px;cursor:pointer;user-select:none}
+.chk-row input[type=checkbox]{width:auto;accent-color:#1a1a1a;cursor:pointer}
+.chk-row label{font-size:13px;color:#1a1a1a;font-weight:500;text-transform:none;letter-spacing:normal;cursor:pointer}
+.strike{text-decoration:line-through;color:#bbb;font-size:12px}
 </style>
 </head>
 <body>
@@ -159,10 +164,18 @@ input::placeholder{color:#bbb}
       <div class="fg"><label>Units sold</label><input id="sQty" type="number" min="1" placeholder="1"></div>
       <div class="fg"><label>Date</label><input id="sDate" type="date"></div>
     </div>
-    <div class="fg"><label>Notes</label><input id="sNotes" placeholder="e.g. cash payment"></div>
-    <div style="font-size:13px;color:#888;display:flex;gap:16px">
-      <span>Revenue: <strong id="sRevP" style="color:#1a1a1a">—</strong></span>
-      <span>Profit: <strong id="sPrfP" style="color:#1D9E75">—</strong></span>
+    <div class="chk-row" id="discRow">
+      <input type="checkbox" id="sDiscount">
+      <label for="sDiscount">Apply discount to this sale</label>
+    </div>
+    <div class="fg" id="discPriceWrap" style="display:none">
+      <label>Discounted selling price (per unit)</label>
+      <input id="sDiscPrice" type="number" min="0" step="0.01" placeholder="0.00">
+    </div>
+    <div class="fg"><label>Notes (optional)</label><input id="sNotes" placeholder="e.g. cash, card, TEDx stall"></div>
+    <div style="font-size:13px;color:#888;display:flex;gap:16px;flex-wrap:wrap">
+      <span>Revenue: <strong id="sRevPrev" style="color:#1a1a1a">—</strong></span>
+      <span>Profit: <strong id="sProfPrev" style="color:#1D9E75">—</strong></span>
     </div>
     <div class="br-row">
       <button class="btn pr" id="btnSaveSale">Save sale</button>
@@ -170,8 +183,8 @@ input::placeholder{color:#bbb}
     </div>
   </div>
   <div class="card">
-    <table><thead><tr><th>Date</th><th>Product</th><th>Units</th><th>Revenue</th><th>Profit</th><th>Notes</th><th></th></tr></thead>
-    <tbody id="saleTbl"><tr><td colspan="7" class="empty">No sales yet</td></tr></tbody></table>
+    <table><thead><tr><th>Date</th><th>Product</th><th>Units</th><th>Price</th><th>Revenue</th><th>Profit</th><th>Notes</th><th></th></tr></thead>
+    <tbody id="saleTbl"><tr><td colspan="8" class="empty">No sales yet</td></tr></tbody></table>
   </div>
 </div>
 
@@ -204,6 +217,14 @@ input::placeholder{color:#bbb}
         <div class="fg"><label>Product</label><select id="aiProd"></select></div>
         <div class="fg"><label>Units</label><input id="aiQty" type="number" min="1" value="1"></div>
         <div class="fg"><label>Date</label><input id="aiDateF" type="date"></div>
+      </div>
+      <div class="chk-row">
+        <input type="checkbox" id="aiDiscount">
+        <label for="aiDiscount">Apply discount to this sale</label>
+      </div>
+      <div class="fg" id="aiDiscPriceWrap" style="display:none">
+        <label>Discounted selling price (per unit)</label>
+        <input id="aiDiscPrice" type="number" min="0" step="0.01" placeholder="0.00">
       </div>
       <div style="font-size:13px;color:#888;margin-bottom:10px">Revenue: <strong id="aiRevP">—</strong> | Profit: <strong id="aiPrfP" style="color:#1D9E75">—</strong></div>
       <div class="br-row">
@@ -287,12 +308,23 @@ input::placeholder{color:#bbb}
       var f = ge('saleForm');
       f.style.display = f.style.display === 'none' ? 'block' : 'none';
       fillSaleSel('sProd'); sv('sDate', today()); sv('sQty', '1'); sv('sNotes', '');
-      ge('sRevP').textContent = '—'; ge('sPrfP').textContent = '—';
+      ge('sDiscount').checked = false; ge('discPriceWrap').style.display = 'none'; sv('sDiscPrice', '');
+      ge('sRevPrev').textContent = '—'; ge('sProfPrev').textContent = '—';
     });
-    ge('btnSaveSale').addEventListener('click', async function() { if (await doSaveSale(gv('sProd'), parseInt(ge('sQty').value) || 0, gv('sDate'), gv('sNotes'))) ge('saleForm').style.display = 'none'; });
+    ge('btnSaveSale').addEventListener('click', async function() {
+      var discounted = ge('sDiscount').checked;
+      var discPrice = discounted ? parseFloat(ge('sDiscPrice').value) : null;
+      if (discounted && (isNaN(discPrice) || discPrice < 0)) { alert('Enter a valid discounted price.'); return; }
+      if (await doSaveSale(gv('sProd'), parseInt(ge('sQty').value) || 0, gv('sDate'), gv('sNotes'), discPrice)) ge('saleForm').style.display = 'none';
+    });
     ge('btnCancelSale').addEventListener('click', function() { ge('saleForm').style.display = 'none'; });
-    ge('sProd').addEventListener('change', updateSalePrev);
-    ge('sQty').addEventListener('input', updateSalePrev);
+    ge('sProd').addEventListener('change', updateSalePreview);
+    ge('sQty').addEventListener('input', updateSalePreview);
+    ge('sDiscount').addEventListener('change', function() {
+      ge('discPriceWrap').style.display = this.checked ? 'block' : 'none';
+      updateSalePreview();
+    });
+    ge('sDiscPrice').addEventListener('input', updateSalePreview);
     ge('btnCsv').addEventListener('click', function() { ge('csvInput').click(); });
     ge('csvInput').addEventListener('change', function() { importCSV(this); });
     ge('btnScan').addEventListener('click', openScan);
@@ -308,6 +340,11 @@ input::placeholder{color:#bbb}
     ge('btnConfAi').addEventListener('click', confirmAi);
     ge('aiProd').addEventListener('change', updateAiPrev);
     ge('aiQty').addEventListener('input', updateAiPrev);
+    ge('aiDiscount').addEventListener('change', function() {
+      ge('aiDiscPriceWrap').style.display = this.checked ? 'block' : 'none';
+      updateAiPrev();
+    });
+    ge('aiDiscPrice').addEventListener('input', updateAiPrev);
     ge('btnExport').addEventListener('click', exportRpt);
   }
 
@@ -372,18 +409,34 @@ input::placeholder{color:#bbb}
     var sel = ge(sid); sel.innerHTML = '';
     prods.forEach(function(p) { var o = document.createElement('option'); o.value = p.id; o.textContent = p.name; sel.appendChild(o); });
   }
-  function updateSalePrev() {
-    var p = prods.find(function(x) { return x.id === ge('sProd').value; }), qty = parseInt(ge('sQty').value) || 0;
-    if (p && qty > 0) { ge('sRevP').textContent = money(p.sell * qty); ge('sPrfP').textContent = money((p.sell - p.cost) * qty); }
-    else { ge('sRevP').textContent = '—'; ge('sPrfP').textContent = '—'; }
+  function effectivePrice(p, discPrice) {
+    return (discPrice !== null && discPrice !== undefined && !isNaN(discPrice)) ? discPrice : p.sell;
   }
-  async function doSaveSale(pid, qty, date, notes) {
-    if (!pid || qty < 1 || !date) { alert('Fill in product, quantity, and date.'); return false; }
+  function updateSalePreview() {
+    var p = prods.find(function(x) { return x.id === ge('sProd').value; }), qty = parseInt(ge('sQty').value) || 0;
+    var discounted = ge('sDiscount').checked;
+    var discPrice = discounted ? parseFloat(ge('sDiscPrice').value) : null;
+    if (p && qty > 0) {
+      var price = effectivePrice(p, discPrice);
+      ge('sRevPrev').textContent = money(price * qty);
+      ge('sProfPrev').textContent = money((price - p.cost) * qty);
+    } else {
+      ge('sRevPrev').textContent = '—'; ge('sProfPrev').textContent = '—';
+    }
+  }
+  async function doSaveSale(pid, qty, date, notes, discPrice) {
+    if (!pid || qty < 1 || !date) { alert('Please select a product, quantity, and date.'); return false; }
     var p = prods.find(function(x) { return x.id === pid; });
     if (!p) { alert('Product not found.'); return false; }
     var sold = sales.filter(function(s) { return s.product_id === pid; }).reduce(function(a, s) { return a + s.qty; }, 0);
-    if (sold + qty > p.stock) { alert('Only ' + (p.stock - sold) + ' units remain.'); return false; }
-    var r = await sb.from('sales').insert({ profile_id: user.id, product_id: pid, product_name: p.name, qty: qty, sell_price: p.sell, cost_price: p.cost, sale_date: date, notes: notes || '' });
+    if (sold + qty > p.stock) { alert('Only ' + (p.stock - sold) + ' units of "' + p.name + '" remain.'); return false; }
+    var price = effectivePrice(p, discPrice);
+    var isDiscounted = discPrice !== null && discPrice !== undefined && !isNaN(discPrice);
+    var r = await sb.from('sales').insert({
+      profile_id: user.id, product_id: pid, product_name: p.name, qty: qty,
+      sell_price: price, cost_price: p.cost, sale_date: date, notes: notes || '',
+      is_discounted: isDiscounted, original_price: isDiscounted ? p.sell : null
+    });
     if (r.error) { alert('Error: ' + r.error.message); return false; }
     toast('Sale saved'); await loadSales(); renderSales(); renderDash(); return true;
   }
@@ -394,35 +447,39 @@ input::placeholder{color:#bbb}
   }
   function renderSales() {
     var tb = ge('saleTbl');
-    if (!sales.length) { tb.innerHTML = '<tr><td colspan="7" class="empty">No sales yet</td></tr>'; return; }
+    if (!sales.length) { tb.innerHTML = '<tr><td colspan="8" class="empty">No sales yet</td></tr>'; return; }
     var html = '';
     sales.forEach(function(s) {
       var rev = s.sell_price * s.qty, prof = (s.sell_price - s.cost_price) * s.qty;
-      html += '<tr><td style="color:#888">' + esc(s.sale_date) + '</td><td><strong>' + esc(s.product_name) + '</strong></td><td><span class="badge bx">' + s.qty + '</span></td><td>' + money(rev) + '</td><td style="color:' + (prof >= 0 ? '#1D9E75' : '#A32D2D') + ';font-weight:500">' + money(prof) + '</td><td style="color:#888;font-size:12px">' + esc(s.notes || '—') + '</td><td><button class="btn sm dn" onclick="STALL.delSale(\'' + s.id + '\')">Del</button></td></tr>';
+      var priceCell = money(s.sell_price);
+      if (s.is_discounted && s.original_price) {
+        priceCell = '<span class="strike">' + money(s.original_price) + '</span> <span class="badge bp">' + money(s.sell_price) + '</span>';
+      }
+      html += '<tr><td style="color:#888">' + esc(s.sale_date) + '</td><td><strong>' + esc(s.product_name) + '</strong></td><td><span class="badge bx">' + s.qty + '</span></td><td>' + priceCell + '</td><td>' + money(rev) + '</td><td style="color:' + (prof >= 0 ? '#1D9E75' : '#A32D2D') + ';font-weight:500">' + money(prof) + '</td><td style="color:#888;font-size:12px">' + esc(s.notes || '—') + '</td><td><button class="btn sm dn" onclick="STALL.delSale(\'' + s.id + '\')">Del</button></td></tr>';
     });
     tb.innerHTML = html;
   }
   function importCSV(input) {
     var file = input.files[0]; if (!file) return;
-    var rd = new FileReader();
-    rd.onload = async function(e) {
+    var reader = new FileReader();
+    reader.onload = async function(e) {
       var lines = e.target.result.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
-      var added = 0, errs = [];
+      var added = 0, errors = [];
       for (var i = 1; i < lines.length; i++) {
         var cols = lines[i].split(',').map(function(c) { return c.trim().replace(/^"|"$/g, ''); });
         var date = cols[0], pname = cols[1], qty = parseInt(cols[2]), notes = cols[3] || '';
         var p = prods.find(function(x) { return x.name.toLowerCase() === (pname || '').toLowerCase(); });
-        if (!p) { errs.push('Row ' + (i+1) + ': "' + pname + '" not found'); continue; }
-        if (isNaN(qty) || qty < 1) { errs.push('Row ' + (i+1) + ': invalid qty'); continue; }
+        if (!p) { errors.push('Row ' + (i+1) + ': "' + pname + '" not found'); continue; }
+        if (isNaN(qty) || qty < 1) { errors.push('Row ' + (i+1) + ': invalid qty'); continue; }
         var sold = sales.filter(function(s) { return s.product_id === p.id; }).reduce(function(a,s) { return a+s.qty; }, 0);
-        if (sold + qty > p.stock) { errs.push('Row ' + (i+1) + ': exceeds stock'); continue; }
-        await sb.from('sales').insert({ profile_id: user.id, product_id: p.id, product_name: p.name, qty: qty, sell_price: p.sell, cost_price: p.cost, sale_date: date || today(), notes: notes });
+        if (sold + qty > p.stock) { errors.push('Row ' + (i+1) + ': exceeds stock'); continue; }
+        await sb.from('sales').insert({ profile_id: user.id, product_id: p.id, product_name: p.name, qty: qty, sell_price: p.sell, cost_price: p.cost, sale_date: date || today(), notes: notes, is_discounted: false, original_price: null });
         added++;
       }
       await loadSales(); renderSales(); renderDash();
-      ge('csvMsg').textContent = 'Imported ' + added + '.' + (errs.length ? ' Errors: ' + errs.join('; ') : '');
+      ge('csvMsg').textContent = 'Imported ' + added + '.' + (errors.length ? ' Errors: ' + errors.join('; ') : '');
     };
-    rd.readAsText(file); input.value = '';
+    reader.readAsText(file); input.value = '';
   }
 
   // DASHBOARD
@@ -459,22 +516,41 @@ input::placeholder{color:#bbb}
   function renderReport() {
     var tRev = sales.reduce(function(a,s){return a+s.sell_price*s.qty;},0);
     var tCost = sales.reduce(function(a,s){return a+s.cost_price*s.qty;},0);
-    var tProf = tRev - tCost, sS = cfg.student_share/100;
+    var tProf = tRev - tCost;
+    var sS = cfg.student_share/100;
+    var studentNet = tRev*sS, schoolLevy = tRev*(1-sS);
     var rows = prods.map(function(p) {
-      var ps = sales.filter(function(s){return s.product_id===p.id;}), sold=ps.reduce(function(a,s){return a+s.qty;},0);
-      var closing=p.stock-sold,rev=sold*p.sell,cogs=sold*p.cost,prof=rev-cogs;
-      return {p:p,sold:sold,closing:closing,rev:rev,cogs:cogs,prof:prof,disc:p.stock-(sold+closing)};
+      var ps = sales.filter(function(s){return s.product_id===p.id;});
+      var unitsSold = ps.reduce(function(a,s){return a+s.qty;},0);
+      var closing = p.stock-unitsSold, rev = ps.reduce(function(a,s){return a+s.sell_price*s.qty;},0), cogs = unitsSold*p.cost, profit = rev-cogs;
+      var disc = p.stock-(unitsSold+closing);
+      var hasDiscount = ps.some(function(s){return s.is_discounted;});
+      return {p:p,unitsSold:unitsSold,closing:closing,rev:rev,cogs:cogs,profit:profit,disc:disc,hasDiscount:hasDiscount};
     });
-    var rh = '';
-    rows.forEach(function(r) {
-      rh += '<tr><td><strong>'+esc(r.p.name)+'</strong></td><td>'+r.p.stock+'</td><td>'+r.sold+'</td><td>'+r.closing+'</td><td>'+money(r.rev)+'</td><td>'+money(r.cogs)+'</td><td style="color:'+(r.prof>=0?'#1D9E75':'#A32D2D')+';font-weight:500">'+money(r.prof)+'</td><td>'+(r.disc!==0?'<span class="badge br">'+r.disc+' off</span>':'<span class="badge bg">Clear</span>')+'</td></tr>';
-    });
-    ge('rptContent').innerHTML =
-      '<div style="margin-bottom:20px"><div style="font-size:17px;font-weight:500">'+esc(cfg.event_name||'Event')+' — '+esc(profile.stall_name||profile.name||'Stall')+'</div><div style="font-size:13px;color:#888;margin-top:4px">Finance lead: '+esc(profile.name||'—')+' · '+esc(cfg.event_date||'Date not set')+'</div></div>'+
-      '<div class="mg" style="margin-bottom:20px"><div class="met ab"><div class="ml">Gross revenue</div><div class="mv">'+money(tRev)+'</div></div><div class="met"><div class="ml">COGS</div><div class="mv">'+money(tCost)+'</div></div><div class="met ag"><div class="ml">Net profit</div><div class="mv">'+money(tProf)+'</div></div></div>'+
-      '<div style="background:#f5f5f3;border-radius:8px;padding:14px;margin-bottom:20px"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#888;font-weight:500;margin-bottom:10px">Revenue split</div><div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px"><span>Your share ('+cfg.student_share+'%)</span><strong>'+money(tRev*sS)+'</strong></div><div style="display:flex;justify-content:space-between;font-size:14px"><span>School levy ('+(100-cfg.student_share)+'%)</span><strong>'+money(tRev*(1-sS))+'</strong></div></div>'+
-      '<table><thead><tr><th>Product</th><th>Opening</th><th>Sold</th><th>Closing</th><th>Revenue</th><th>COGS</th><th>Profit</th><th>Status</th></tr></thead><tbody>'+(rh||'<tr><td colspan="8" class="empty">No data</td></tr>')+'</tbody></table>'+
-      '<div class="dvd"></div><div style="font-size:12px;color:#888">Units sold = Opening − Closing · Revenue = Units × Sell price · *Split set by admin</div>';
+    var discountedCount = sales.filter(function(s){return s.is_discounted;}).length;
+    document.getElementById('rptContent').innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:1.25rem">'+
+      '<div><div style="font-size:17px;font-weight:500">'+esc(cfg.event_name||'Event')+' — Financial Report</div>'+
+      '<div style="font-size:13px;color:#888;margin-top:4px">'+esc(profile.stall_name||profile.name||'Stall')+' · '+esc(cfg.event_date||'Date not set')+' · Finance lead: '+esc(profile.name||'—')+'</div></div>'+
+      '<span class="badge bb">Generated '+new Date().toLocaleDateString()+'</span></div>'+
+      '<div class="mg" style="margin-bottom:1.25rem">'+
+      '<div class="met ab"><div class="ml">Gross revenue</div><div class="mv">'+money(tRev)+'</div></div>'+
+      '<div class="met"><div class="ml">Total COGS</div><div class="mv">'+money(tCost)+'</div></div>'+
+      '<div class="met ag"><div class="ml">Net profit</div><div class="mv">'+money(tProf)+'</div></div></div>'+
+      (discountedCount ? '<div class="badge bp" style="margin-bottom:1rem">'+discountedCount+' sale(s) included a discount</div>' : '')+
+      '<div style="background:#f5f5f3;border-radius:10px;padding:1rem;margin-bottom:1.25rem">'+
+      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#888;font-weight:500;margin-bottom:.75rem">Revenue split</div>'+
+      '<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px"><span>Your share ('+cfg.student_share+'%)</span><strong>'+money(studentNet)+'</strong></div>'+
+      '<div style="display:flex;justify-content:space-between;font-size:14px"><span>School levy ('+(100-cfg.student_share)+'%)</span><strong>'+money(schoolLevy)+'</strong></div></div>'+
+      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#888;font-weight:500;margin-bottom:.75rem">Stock reconciliation</div>'+
+      '<table><thead><tr><th>Product</th><th>Opening</th><th>Sold</th><th>Closing</th><th>Revenue</th><th>COGS</th><th>Profit</th><th>Status</th></tr></thead><tbody>'+
+      (rows.length?rows.map(function(r){
+        return '<tr><td><strong>'+esc(r.p.name)+'</strong>'+(r.hasDiscount?' <span class="badge bp" style="font-size:9px">discounted</span>':'')+'</td><td>'+r.p.stock+'</td><td>'+r.unitsSold+'</td><td>'+r.closing+'</td><td>'+money(r.rev)+'</td><td>'+money(r.cogs)+'</td>'+
+        '<td style="color:'+(r.profit>=0?'#1D9E75':'#A32D2D')+';font-weight:500">'+money(r.profit)+'</td>'+
+        '<td>'+(r.disc!==0?'<span class="badge br">'+r.disc+' off</span>':'<span class="badge bg">Clear</span>')+'</td></tr>';
+      }).join(''):'<tr><td colspan="8" class="empty">No data</td></tr>')+
+      '</tbody></table><div class="dvd"></div>'+
+      '<div style="font-size:12px;color:#888">Units sold = Opening − Closing · Revenue = Units × actual sale price (incl. discounts) · *Split set by admin</div>';
   }
   function exportRpt() {
     var blob = new Blob([ge('rptContent').innerText], {type:'text/plain'});
@@ -489,6 +565,7 @@ input::placeholder{color:#bbb}
     ge('scanPrev').style.display = 'none'; ge('camPh').style.display = 'block';
     ge('aiRes').style.display = 'none'; ge('aiForm').style.display = 'none'; ge('aiLoad').style.display = 'none';
     ge('scanInput').value = ''; sv('aiDateF', today());
+    ge('aiDiscount').checked = false; ge('aiDiscPriceWrap').style.display = 'none'; sv('aiDiscPrice', '');
   }
   async function analyzeImg(dataUrl) {
     ge('aiLoad').style.display = 'block'; ge('aiRes').style.display = 'none'; ge('aiForm').style.display = 'none';
@@ -522,10 +599,18 @@ input::placeholder{color:#bbb}
   }
   function updateAiPrev() {
     var p = prods.find(function(x){return x.id===ge('aiProd').value;}), qty = parseInt(ge('aiQty').value)||0;
-    if (p && qty > 0) { ge('aiRevP').textContent = money(p.sell*qty); ge('aiPrfP').textContent = money((p.sell-p.cost)*qty); }
+    var discounted = ge('aiDiscount').checked;
+    var discPrice = discounted ? parseFloat(ge('aiDiscPrice').value) : null;
+    if (p && qty > 0) {
+      var price = effectivePrice(p, discPrice);
+      ge('aiRevP').textContent = money(price*qty); ge('aiPrfP').textContent = money((price-p.cost)*qty);
+    }
   }
   async function confirmAi() {
-    var ok = await doSaveSale(ge('aiProd').value, parseInt(ge('aiQty').value)||0, gv('aiDateF'), 'AI scan');
+    var discounted = ge('aiDiscount').checked;
+    var discPrice = discounted ? parseFloat(ge('aiDiscPrice').value) : null;
+    if (discounted && (isNaN(discPrice) || discPrice < 0)) { alert('Enter a valid discounted price.'); return; }
+    var ok = await doSaveSale(ge('aiProd').value, parseInt(ge('aiQty').value)||0, gv('aiDateF'), 'AI scan', discPrice);
     if (ok) ge('scanModal').style.display = 'none';
   }
 
