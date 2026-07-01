@@ -367,7 +367,7 @@ input::placeholder{color:#bbb}
     // Use signUp with metadata — Supabase trigger creates profile
     var res = await sb.auth.signUp({
       email: email, password: Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2),
-      options: { data: { name: name, role: role }, emailRedirectTo: window.location.origin+'/index.html' }
+      data: { name: name, role: role, stall_name: stall ‎}, emailRedirectTo: window.location.origin+'/index.html' }
     });
     if (res.error) { alert('Error: '+res.error.message); return; }
     // Update stall_name and role after trigger creates profile
