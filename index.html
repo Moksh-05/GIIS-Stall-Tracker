@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Business Tracker — Login</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f3;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#fff;border:1px solid #e5e5e2;border-radius:16px;padding:40px;max-width:400px;width:100%}
+h1{font-size:22px;font-weight:500;margin-bottom:4px}
+.sub{font-size:13px;color:#888;margin-bottom:28px}
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:16px}
+label{font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.04em}
+input{padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;font-family:inherit;outline:none;width:100%}
+input:focus{border-color:#999;box-shadow:0 0 0 3px rgba(0,0,0,.05)}
+input::placeholder{color:#bbb}
+.btn{width:100%;padding:11px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;margin-top:4px;transition:opacity .15s}
+.btn:hover{opacity:.85}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.msg{border-radius:8px;padding:10px 14px;font-size:13px;margin-top:14px;display:none}
+.msg.err{background:#fcebeb;color:#a32d2d}
+.msg.ok{background:#eaf3de;color:#3b6d11}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Business Tracker</h1>
+  <p class="sub">GIIS Dubai · Student Business Initiative</p>
+  <div class="fg"><label>Username</label><input type="text" id="username" placeholder="e.g. stall1" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"></div>
+  <div class="fg"><label>Password</label><input type="password" id="password" placeholder="••••••••" autocomplete="current-password"></div>
+  <button class="btn" id="loginBtn">Sign in</button>
+  <div class="msg" id="msg"></div>
+</div>
+<script>
+(function() {
+  var loginBtn = document.getElementById('loginBtn');
+  var msgEl = document.getElementById('msg');
+
+  // If input looks like a real email, use it as-is. Otherwise append @giis.com
+  function toEmail(input) {
+    input = input.trim().toLowerCase();
+    return input.indexOf('@') !== -1 ? input : input + '@giis.com';
+  }
+
+  sb.auth.getSession().then(function(res) {
+    if (res.data.session) doRedirect(res.data.session.user);
+  });
+
+  loginBtn.addEventListener('click', async function() {
+    var username = document.getElementById('username').value.trim();
+    var password = document.getElementById('password').value;
+    if (!username || !password) { showMsg('Please enter your username and password.', 'err'); return; }
+    loginBtn.disabled = true; loginBtn.textContent = 'Signing in...'; msgEl.style.display = 'none';
+    var email = toEmail(username);
+    var res = await sb.auth.signInWithPassword({ email: email, password: password });
+    if (res.error) {
+      showMsg('Invalid username or password.', 'err');
+      loginBtn.disabled = false; loginBtn.textContent = 'Sign in'; return;
+    }
+    doRedirect(res.data.user);
+  });
+
+  document.getElementById('password').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') loginBtn.click();
+  });
+
+  async function doRedirect(user) {
+    var res = await sb.from('profiles').select('role, event_type').eq('id', user.id).single();
+    if (!res.data) { showMsg('Account not set up correctly. Contact admin.', 'err'); loginBtn.disabled = false; loginBtn.textContent = 'Sign in'; return; }
+    if (res.data.role === 'admin') window.location.href = 'admin.html';
+    else if (res.data.event_type === 'foodfest') window.location.href = 'foodfest.html';
+    else window.location.href = 'stall.html';
+  }
+
+  function showMsg(msg, type) { msgEl.textContent = msg; msgEl.className = 'msg ' + type; msgEl.style.display = 'block'; }
+})();
+</script>
+</body>
+</html>
