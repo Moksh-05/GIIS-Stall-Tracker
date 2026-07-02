@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Business Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="config.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;font-size:15px;background:#f5f5f3;min-height:100vh;color:#1a1a1a}
+nav{background:#fff;border-bottom:1px solid #e5e5e2;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:50}
+.nav-tabs{display:flex;overflow-x:auto}
+.nav-btn{background:none;border:none;border-bottom:2px solid transparent;padding:14px 12px;font-size:13px;color:#888;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s}
+.nav-btn.active{color:#1a1a1a;border-bottom-color:#1a1a1a;font-weight:500}
+.nav-btn:hover:not(.active){color:#1a1a1a}
+.nav-right{display:flex;align-items:center;gap:10px;font-size:13px;flex-shrink:0}
+.page{display:none;padding:20px;max-width:960px;margin:0 auto}
+.page.active{display:block}
+.ph{margin-bottom:20px}
+.ph h2{font-size:20px;font-weight:500;margin-bottom:3px}
+.ph p{font-size:13px;color:#888}
+.card{background:#fff;border:1px solid #e5e5e2;border-radius:12px;padding:20px;margin-bottom:12px}
+.ct{font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px}
+.mg{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px;margin-bottom:12px}
+.met{background:#fff;border:1px solid #e5e5e2;border-radius:10px;padding:14px 16px}
+.ml{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.mv{font-size:19px;font-weight:500}
+.ms{font-size:11px;color:#888;margin-top:4px}
+.ag{border-left:3px solid #1D9E75}.ab{border-left:3px solid #378ADD}.aa{border-left:3px solid #BA7517}.ao{border-left:3px solid #e65100}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 12px;color:#888;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid #e5e5e2}
+td{padding:10px 12px;border-bottom:1px solid #e5e5e2;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#f9f9f8}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
+.bg{background:#eaf3de;color:#3b6d11}.br{background:#fcebeb;color:#a32d2d}.ba{background:#faeeda;color:#854f0b}
+.bb{background:#e6f1fb;color:#185fa5}.bx{background:#f0f0ee;color:#555}.bo{background:#fff3e0;color:#e65100}
+.fr{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-bottom:14px}
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.fg label{font-size:11px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.04em}
+input,select{width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fff;color:#1a1a1a;outline:none;font-family:inherit}
+input:focus,select:focus{border-color:#999;box-shadow:0 0 0 3px rgba(0,0,0,.05)}
+input::placeholder{color:#bbb}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s}
+.btn:hover{background:#f5f5f3}
+.btn.pr{background:#1a1a1a;color:#fff;border-color:#1a1a1a}.btn.pr:hover{opacity:.82}
+.btn.dn{color:#a32d2d;border-color:#f7c1c1}.btn.dn:hover{background:#fcebeb}
+.btn.sm{padding:5px 10px;font-size:12px;border-radius:7px}
+.br-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.sh{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:8px;flex-wrap:wrap}
+.empty{color:#bbb;font-size:13px;padding:28px;text-align:center}
+.dvd{height:1px;background:#e5e5e2;margin:14px 0}
+.sbar{height:10px;border-radius:20px;background:#eee;overflow:hidden;display:flex;margin:10px 0 6px}
+.sbar .ss{background:#1D9E75;transition:width .3s}.sbar .sk{background:#378ADD;flex:1}
+.sr{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid #e5e5e2;gap:12px;flex-wrap:wrap}
+.sr:last-child{border-bottom:none}
+.sw{display:flex;align-items:center;gap:10px}
+.sw input[type=range]{width:110px}
+.sv2{font-size:14px;font-weight:500;min-width:38px;text-align:right}
+.stall-tab{padding:6px 14px;border:1px solid #ddd;border-radius:20px;font-size:13px;cursor:pointer;background:#fff;font-family:inherit;transition:all .15s}
+.stall-tab.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:200;display:none}
+.cl{display:flex;gap:14px;margin-bottom:8px;flex-wrap:wrap}
+.cl span{display:flex;align-items:center;gap:5px;font-size:12px;color:#888}
+.cl .dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.info-box{background:#f5f5f3;border-radius:8px;padding:12px 14px;font-size:13px;color:#555;margin-bottom:14px;line-height:1.6}
+.filter-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.filter-btn{padding:6px 14px;border:1px solid #ddd;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;background:#fff;font-family:inherit;transition:all .15s}
+.filter-btn.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.section-label{font-size:12px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-tabs" id="mainNav">
+    <button class="nav-btn active" data-page="overview">Overview</button>
+    <button class="nav-btn" data-page="stalls">Stalls</button>
+    <button class="nav-btn" data-page="users">Users</button>
+    <button class="nav-btn" data-page="settings">Settings</button>
+  </div>
+  <div class="nav-right">
+    <span style="font-size:11px;background:#f0f0ee;padding:3px 10px;border-radius:20px;color:#555;font-weight:500">Admin</span>
+    <button class="btn sm dn" id="logoutBtn">Sign out</button>
+  </div>
+</nav>
+
+<!-- OVERVIEW -->
+<div id="page-overview" class="page active">
+  <div class="ph"><h2 id="ovTitle">Overview</h2><p id="ovSub">Live consolidated view</p></div>
+  <div class="mg" id="ovMetrics"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+    <div class="card" style="margin-bottom:0"><div class="ct">Revenue by account</div><div style="position:relative;height:220px"><canvas id="cStall"></canvas></div></div>
+    <div class="card" style="margin-bottom:0"><div class="ct">Revenue over time</div><div style="position:relative;height:220px"><canvas id="cTime"></canvas></div></div>
+  </div>
+  <div class="card">
+    <div class="ct">All sales</div>
+    <table><thead><tr><th>Date</th><th>Account</th><th>Type</th><th>Product</th><th>Units</th><th>Revenue</th><th>Profit</th></tr></thead>
+    <tbody id="allSalesTbl"></tbody></table>
+  </div>
+</div>
+
+<!-- STALLS -->
+<div id="page-stalls" class="page">
+  <div class="ph"><h2>Stall drilldown</h2><p>Select an account to view their data</p></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px" id="stallTabs"></div>
+  <div id="stallDetail"><div class="card"><p class="empty">Select an account above</p></div></div>
+</div>
+
+<!-- USERS -->
+<div id="page-users" class="page">
+  <div class="ph"><h2>Users</h2><p>Create and manage accounts</p></div>
+  <div class="sh"><div></div><button class="btn pr" id="btnAddUser">+ Create user</button></div>
+  <div class="card" id="userForm" style="display:none">
+    <div class="ct">Create new user</div>
+    <div class="info-box">Choose a username and password and hand them directly to the team. No email needed.</div>
+    <div class="fr">
+      <div class="fg"><label>Username</label><input id="uUsername" placeholder="e.g. stall1" autocapitalize="none"></div>
+      <div class="fg"><label>Password (min 6 chars)</label><input id="uPassword" type="text" placeholder="set a password"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Display name</label><input id="uName" placeholder="e.g. Team Spark"></div>
+      <div class="fg"><label>Stall name</label><input id="uStall" placeholder="e.g. Stall 1"></div>
+    </div>
+    <div class="fg" style="max-width:220px">
+      <label>Account type</label>
+      <select id="uRole">
+        <option value="stall">Stall</option>
+        <option value="foodfest">Food Fest</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <div class="br-row">
+      <button class="btn pr" id="btnSaveUser">Create user</button>
+      <button class="btn" id="btnCancelUser">Cancel</button>
+    </div>
+    <div id="userMsg" style="font-size:13px;margin-top:10px;display:none;padding:10px 14px;border-radius:8px"></div>
+  </div>
+  <div class="card">
+    <table><thead><tr><th>Username</th><th>Display name</th><th>Type</th><th>Stall name</th><th></th></tr></thead>
+    <tbody id="userTbl"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div id="page-settings" class="page">
+  <div class="ph"><h2>Settings</h2><p>Global config for all accounts</p></div>
+
+  <div class="card">
+    <div class="ct">Event details</div>
+    <div class="fr">
+      <div class="fg"><label>Event name</label><input id="cfgEvt" placeholder="e.g. TEDx GIIS 2026"></div>
+      <div class="fg"><label>Event date</label><input id="cfgDate" type="date"></div>
+      <div class="fg"><label>Currency</label><input id="cfgCur" placeholder="AED"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct" style="font-size:12px;color:#aaa;text-transform:uppercase;letter-spacing:.04em">Data view</div>
+    <p style="font-size:12px;color:#999;margin-bottom:10px">Which account type Overview and Stalls pages show.</p>
+    <select id="cfgViewMode" style="padding:6px 10px;border:1px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit">
+      <option value="stall">Stalls</option>
+      <option value="foodfest">Food Fest</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <div class="ct">Stall revenue split</div>
+    <p style="font-size:13px;color:#888;margin-bottom:14px">Revenue from stall accounts — split between students and school.</p>
+    <div class="sr">
+      <div><div style="font-size:14px;font-weight:500">Student team share</div><div style="font-size:12px;color:#888;margin-top:2px">Retained by each stall team after event</div></div>
+      <div class="sw"><input type="range" id="splitSlider" min="0" max="100" step="1" value="70"><span class="sv2" id="stuVal">70%</span></div>
+    </div>
+    <div class="sr">
+      <div><div style="font-size:14px;font-weight:500">School levy</div><div style="font-size:12px;color:#888;margin-top:2px">Auto-calculated</div></div>
+      <div class="sw"><span class="sv2" id="schVal">30%</span></div>
+    </div>
+    <div class="sbar"><div class="ss" id="splitFill" style="width:70%"></div><div class="sk"></div></div>
+    <div style="display:flex;gap:14px;font-size:12px;color:#888;margin-bottom:14px">
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#1D9E75;display:inline-block"></span>Student</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#378ADD;display:inline-block"></span>School</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Food Fest — profit destination</div>
+    <p style="font-size:13px;color:#888;margin-bottom:14px">Food Fest has no school levy. All profit goes to charity.</p>
+    <div class="sr">
+      <div><div style="font-size:14px;font-weight:500">Charity name</div><div style="font-size:12px;color:#888;margin-top:2px">Shown on Food Fest reports</div></div>
+      <div><input id="cfgCharity" placeholder="e.g. Red Crescent" style="width:220px"></div>
+    </div>
+    <div class="sr">
+      <div><div style="font-size:14px;font-weight:500">School levy on Food Fest</div><div style="font-size:12px;color:#888;margin-top:2px">Always 0% — profits go to charity</div></div>
+      <div><span class="badge bg">0% levy</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Danger zone</div>
+    <p style="font-size:13px;color:#888;margin-bottom:14px">Permanently delete all sales data across all accounts. Cannot be undone.</p>
+    <button class="btn dn" id="btnClearAll">Delete all sales data</button>
+  </div>
+
+  <button class="btn pr" id="btnSaveSettings" style="margin-top:4px">Save all settings</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function() {
+  var user=null, gcfg={student_share:70,event_name:'',event_date:'',currency:'AED',charity_name:'',ff_levy:0};
+  var allProfiles=[], allSales=[], allProds=[];
+  var cStall=null, cTime=null;
+  var ovFilterVal='stall', stallFilterVal='stall';
+
+  function ge(id){return document.getElementById(id);}
+  function gv(id){var el=ge(id);return el?el.value.trim():'';}
+  function sv(id,val){var el=ge(id);if(el)el.value=val||'';}
+  function money(n){return (gcfg.currency||'AED')+' '+parseFloat(n||0).toFixed(2);}
+  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function toast(msg){var t=ge('toast');t.textContent=msg;t.style.display='block';setTimeout(function(){t.style.display='none';},2500);}
+
+  var SESSION_KEY='bt_session';
+  function getSession(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||'null');}catch(e){return null;}}
+  function setSession(s){localStorage.setItem(SESSION_KEY,JSON.stringify(s));}
+  function clearSession(){localStorage.removeItem(SESSION_KEY);}
+
+  async function init(){
+    var s=getSession();
+    if(!s){window.location.href='index.html';return;}
+    var res=await sb.rpc('validate_session',{p_id:s.id,p_token:s.token});
+    if(!res.data||!res.data.length){clearSession();window.location.href='index.html';return;}
+    var u=res.data[0];
+    if(u.role!=='admin'){window.location.href='stall.html';return;}
+    user=Object.assign({},u,{token:s.token});
+    await loadAll();
+    bindAll();
+    ge('cfgViewMode').value=ovFilterVal;
+    renderOverview();
+    renderUsers();
+  }
+
+  async function loadAll(){
+    var gc=await sb.from('global_config').select('*').single();
+    if(gc.data) gcfg=Object.assign(gcfg,{
+      student_share:gc.data.student_share||70,
+      event_name:gc.data.event_name||'',
+      event_date:gc.data.event_date||'',
+      currency:gc.data.currency||'AED',
+      charity_name:gc.data.charity_name||'',
+      ff_levy:0
+    });
+    var prf=await sb.from('profiles').select('*').order('created_at');
+    allProfiles=prf.data||[];
+    var prds=await sb.from('products').select('*, profiles(stall_name,name,event_type,username)').order('created_at');
+    allProds=prds.data||[];
+    var sls=await sb.from('sales').select('*, profiles(stall_name,name,event_type,username)').order('sale_date',{ascending:false});
+    allSales=sls.data||[];
+    applyConfig();
+  }
+
+  function applyConfig(){
+    sv('cfgEvt',gcfg.event_name);sv('cfgDate',gcfg.event_date);sv('cfgCur',gcfg.currency||'AED');sv('cfgCharity',gcfg.charity_name||'');
+    ge('splitSlider').value=gcfg.student_share;refreshSplit(true);
+    ge('ovTitle').textContent=gcfg.event_name||'Overview';
+    ge('ovSub').textContent=gcfg.event_date?'Event date: '+gcfg.event_date:'Live consolidated view';
+  }
+
+  function refreshSplit(silent){
+    var v=parseInt(ge('splitSlider').value);
+    ge('stuVal').textContent=v+'%';ge('schVal').textContent=(100-v)+'%';
+    ge('splitFill').style.width=v+'%';
+    if(!silent)gcfg.student_share=v;
+  }
+
+  function filteredSales(filter){
+    if(filter==='all')return allSales;
+    return allSales.filter(function(s){return s.profiles&&s.profiles.event_type===(filter==='foodfest'?'foodfest':'stall');});
+  }
+  function filteredProfiles(filter){
+    var non=allProfiles.filter(function(p){return p.role!=='admin';});
+    if(filter==='all')return non;
+    return non.filter(function(p){return p.event_type===(filter==='foodfest'?'foodfest':'stall');});
+  }
+
+  function bindAll(){
+    ge('mainNav').addEventListener('click',function(e){
+      var b=e.target.closest('.nav-btn');if(!b)return;
+      var p=b.dataset.page;
+      document.querySelectorAll('.page').forEach(function(x){x.classList.remove('active');});
+      document.querySelectorAll('.nav-btn').forEach(function(x){x.classList.remove('active');});
+      ge('page-'+p).classList.add('active');b.classList.add('active');
+      if(p==='overview'){loadAll().then(renderOverview);}
+      if(p==='stalls'){loadAll().then(function(){renderStalls();});}
+      if(p==='users'){loadAll().then(renderUsers);}
+      if(p==='settings'){loadAll().then(function(){ge('cfgViewMode').value=ovFilterVal;});}
+    });
+
+    ge('logoutBtn').addEventListener('click',async function(){var s=getSession();if(s)sb.rpc('logout_user',{p_id:s.id});clearSession();window.location.href='index.html';});
+
+    // Data view switch — tucked into Settings tab
+    ge('cfgViewMode').addEventListener('change',function(){
+      ovFilterVal=ge('cfgViewMode').value;
+      stallFilterVal=ge('cfgViewMode').value;
+      renderOverview();
+      renderStalls();
+    });
+
+    // Users
+    ge('btnAddUser').addEventListener('click',function(){
+      var f=ge('userForm');f.style.display=f.style.display==='none'?'block':'none';
+      sv('uUsername','');sv('uPassword','');sv('uName','');sv('uStall','');
+      ge('uRole').value='stall';ge('userMsg').style.display='none';
+    });
+    ge('btnSaveUser').addEventListener('click',createUser);
+    ge('btnCancelUser').addEventListener('click',function(){ge('userForm').style.display='none';});
+
+    // Settings
+    ge('splitSlider').addEventListener('input',function(){refreshSplit(false);});
+    ge('btnSaveSettings').addEventListener('click',saveSettings);
+    ge('btnClearAll').addEventListener('click',async function(){
+      if(!confirm('Delete ALL sales data across every account? This cannot be undone.'))return;
+      await sb.from('sales').delete().neq('id','00000000-0000-0000-0000-000000000000');
+      toast('All sales deleted');await loadAll();renderOverview();
+    });
+  }
+
+  // OVERVIEW
+  function renderOverview(){
+    var sales=filteredSales(ovFilterVal);
+    var tRev=sales.reduce(function(a,s){return a+s.sell_price*s.qty;},0);
+    var tCost=sales.reduce(function(a,s){return a+s.cost_price*s.qty;},0);
+    var tProf=tRev-tCost,sS=gcfg.student_share/100,avgM=tRev>0?tProf/tRev*100:0;
+    var profs=filteredProfiles(ovFilterVal);
+
+    ge('ovMetrics').innerHTML=
+      '<div class="met ab"><div class="ml">Total revenue</div><div class="mv">'+money(tRev)+'</div><div class="ms">'+sales.length+' sales</div></div>'+
+      '<div class="met ag"><div class="ml">Total profit</div><div class="mv">'+money(tProf)+'</div><div class="ms">Avg margin '+avgM.toFixed(1)+'%</div></div>'+
+      (ovFilterVal!=='foodfest'?'<div class="met ag"><div class="ml">Student share ('+gcfg.student_share+'%)</div><div class="mv">'+money(tRev*sS)+'</div></div><div class="met aa"><div class="ml">School levy ('+(100-gcfg.student_share)+'%)</div><div class="mv">'+money(tRev*(1-sS))+'</div></div>':'')+
+      (ovFilterVal==='foodfest'?'<div class="met ao"><div class="ml">To charity</div><div class="mv">'+money(tProf)+'</div><div class="ms">'+(gcfg.charity_name||'Charity')+'</div></div>':'')+
+      '<div class="met"><div class="ml">Active accounts</div><div class="mv">'+profs.length+'</div></div>';
+
+    var byStall={};
+    sales.forEach(function(s){var sn=(s.profiles&&(s.profiles.stall_name||s.profiles.name))||'Unknown';if(!byStall[sn])byStall[sn]=0;byStall[sn]+=s.sell_price*s.qty;});
+    var sL=Object.keys(byStall),sV=sL.map(function(k){return +byStall[k].toFixed(2);});
+    var colors=['#85B7EB','#5DCAA5','#FAC775','#F09595','#B39DDB','#80DEEA','#FFB74D','#81C784'];
+    if(cStall)cStall.destroy();
+    cStall=new Chart(ge('cStall'),{type:'bar',data:{labels:sL.length?sL:['No data'],datasets:[{label:'Revenue',data:sV.length?sV:[0],backgroundColor:colors.slice(0,sL.length),borderRadius:4,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(0,0,0,.06)'}}}}});
+
+    var byDate={};sales.forEach(function(s){if(!byDate[s.sale_date])byDate[s.sale_date]=0;byDate[s.sale_date]+=s.sell_price*s.qty;});
+    var dL=Object.keys(byDate).sort(),dV=dL.map(function(d){return +byDate[d].toFixed(2);});
+    if(cTime)cTime.destroy();
+    cTime=new Chart(ge('cTime'),{type:'line',data:{labels:dL.length?dL:['No data'],datasets:[{label:'Revenue',data:dV.length?dV:[0],borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,.08)',fill:true,tension:.35,pointRadius:4,pointBackgroundColor:'#378ADD'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(0,0,0,.06)'}}}}});
+
+    var tb=ge('allSalesTbl'),html='';
+    if(!sales.length){tb.innerHTML='<tr><td colspan="7" class="empty">No sales yet</td></tr>';return;}
+    sales.slice(0,150).forEach(function(s){
+      var rev=s.sell_price*s.qty,prof=(s.sell_price-s.cost_price)*s.qty;
+      var sname=(s.profiles&&(s.profiles.stall_name||s.profiles.name))||'—';
+      var etype=s.profiles&&s.profiles.event_type;
+      var tb2=etype==='foodfest'?'<span class="badge bo">Food Fest</span>':'<span class="badge bb">Stall</span>';
+      html+='<tr><td style="color:#888">'+esc(s.sale_date)+'</td><td>'+esc(sname)+'</td><td>'+tb2+'</td><td>'+esc(s.product_name)+'</td><td><span class="badge bx">'+s.qty+'</span></td><td>'+money(rev)+'</td><td style="color:'+(prof>=0?'#1D9E75':'#A32D2D')+';font-weight:500">'+money(prof)+'</td></tr>';
+    });
+    tb.innerHTML=html;
+  }
+
+  // STALLS DRILLDOWN
+  function renderStalls(){
+    var profs=filteredProfiles(stallFilterVal);
+    var tabs=ge('stallTabs');tabs.innerHTML='';
+    if(!profs.length){
+      ge('stallDetail').innerHTML='<div class="card"><p class="empty">No accounts found for this filter. Create accounts in the Users tab.</p></div>';
+      return;
+    }
+    profs.forEach(function(p,i){
+      var btn=document.createElement('button');
+      btn.className='stall-tab'+(i===0?' active':'');
+      btn.textContent=(p.stall_name||p.name||p.username||'—')+(p.event_type==='foodfest'?' 🍕':'');
+      btn.addEventListener('click',function(){
+        document.querySelectorAll('.stall-tab').forEach(function(x){x.classList.remove('active');});
+        btn.classList.add('active');renderStallDetail(p.id);
+      });
+      tabs.appendChild(btn);
+    });
+    renderStallDetail(profs[0].id);
+  }
+
+  function renderStallDetail(pid){
+    var p=allProfiles.find(function(x){return x.id===pid;});if(!p)return;
+    var isFf=p.event_type==='foodfest';
+    var sPrds=allProds.filter(function(x){return x.profile_id===pid;});
+    var sSales=allSales.filter(function(x){return x.profile_id===pid;});
+    var tRev=sSales.reduce(function(a,s){return a+s.sell_price*s.qty;},0);
+    var tProf=sSales.reduce(function(a,s){return a+(s.sell_price-s.cost_price)*s.qty;},0);
+    var sS=gcfg.student_share/100;
+    var rows=sPrds.map(function(prod){
+      var ps=sSales.filter(function(s){return s.product_id===prod.id;}),sold=ps.reduce(function(a,s){return a+s.qty;},0);
+      var closing=prod.stock-sold,rev=ps.reduce(function(a,s){return a+s.sell_price*s.qty;},0),cogs=sold*prod.cost,prof=rev-cogs;
+      return{prod:prod,sold:sold,closing:closing,rev:rev,cogs:cogs,prof:prof,disc:prod.stock-(sold+closing)};
+    });
+    var rh='';
+    rows.forEach(function(r){
+      var m=r.prod.sell>0?((r.prod.sell-r.prod.cost)/r.prod.sell*100).toFixed(1):0;
+      var mc=parseFloat(m)>=30?'bg':parseFloat(m)>=10?'ba':'br';
+      rh+='<tr><td><strong>'+esc(r.prod.name)+'</strong></td><td><span class="badge '+mc+'">'+m+'%</span></td><td>'+r.prod.stock+'</td><td>'+r.sold+'</td><td>'+r.closing+'</td><td>'+money(r.rev)+'</td><td>'+money(r.cogs)+'</td><td style="color:'+(r.prof>=0?'#1D9E75':'#A32D2D')+';font-weight:500">'+money(r.prof)+'</td><td>'+(r.disc!==0?'<span class="badge br">'+r.disc+' off</span>':'<span class="badge bg">Clear</span>')+'</td></tr>';
+    });
+    var typeBadge=isFf?'<span class="badge bo" style="margin-left:8px">Food Fest</span>':'<span class="badge bb" style="margin-left:8px">Stall</span>';
+    var metricsHtml='<div class="met ab"><div class="ml">Revenue</div><div class="mv">'+money(tRev)+'</div></div>'+
+      '<div class="met ag"><div class="ml">Profit</div><div class="mv">'+money(tProf)+'</div></div>';
+    if(isFf){
+      metricsHtml+='<div class="met ao"><div class="ml">To charity</div><div class="mv">'+money(tProf)+'</div><div class="ms">'+(gcfg.charity_name||'Charity')+'</div></div>';
+    } else {
+      metricsHtml+='<div class="met ag"><div class="ml">Their share ('+gcfg.student_share+'%)</div><div class="mv">'+money(tRev*sS)+'</div></div>'+
+        '<div class="met aa"><div class="ml">School levy</div><div class="mv">'+money(tRev*(1-sS))+'</div></div>';
+    }
+    ge('stallDetail').innerHTML=
+      '<div class="card">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:16px">'+
+      '<div><div style="font-size:16px;font-weight:500">'+esc(p.stall_name||p.name||p.username||'—')+typeBadge+'</div>'+
+      '<div style="font-size:12px;color:#888;margin-top:3px">Username: '+esc(p.username||'—')+'</div></div></div>'+
+      '<div class="mg" style="margin-bottom:16px">'+metricsHtml+'</div>'+
+      '<div class="ct">Stock &amp; reconciliation</div>'+
+      '<table><thead><tr><th>Product</th><th>Margin</th><th>Opening</th><th>Sold</th><th>Closing</th><th>Revenue</th><th>COGS</th><th>Profit</th><th>Status</th></tr></thead>'+
+      '<tbody>'+(rh||'<tr><td colspan="9" class="empty">No products added yet</td></tr>')+'</tbody></table></div>';
+  }
+
+  // USERS
+  function renderUsers(){
+    var tb=ge('userTbl');
+    var all=allProfiles;
+    if(!all.length){tb.innerHTML='<tr><td colspan="5" class="empty">No users yet</td></tr>';return;}
+    var html='';
+    all.forEach(function(u){
+      var uname=esc(u.username||'—');
+      var roleClass=u.role==='admin'?'br':u.event_type==='foodfest'?'bo':'bb';
+      var roleLabel=u.role==='admin'?'Admin':u.event_type==='foodfest'?'Food Fest':'Stall';
+      html+='<tr>'+
+        '<td><strong>'+uname+'</strong></td>'+
+        '<td style="color:#555">'+esc(u.name||'—')+'</td>'+
+        '<td><span class="badge '+roleClass+'">'+roleLabel+'</span></td>'+
+        '<td>'+esc(u.stall_name||'—')+'</td>'+
+        '<td style="white-space:nowrap">'+
+        '<button class="btn sm" onclick="ADMIN.editUser(\''+u.id+'\')">Edit</button> '+
+        '<button class="btn sm dn" onclick="ADMIN.deleteUser(\''+u.id+'\',\''+uname+'\')">Delete</button>'+
+        '</td></tr>';
+    });
+    tb.innerHTML=html;
+  }
+
+  async function createUser(){
+    var username=gv('uUsername'),password=gv('uPassword'),name=gv('uName'),stall=gv('uStall'),role=ge('uRole').value;
+    if(!username||!password){showUserMsg('Username and password are required.','err');return;}
+    if(password.length<6){showUserMsg('Password must be at least 6 characters.','err');return;}
+    if(!/^[a-z0-9_]+$/i.test(username)){showUserMsg('Username can only contain letters, numbers, and underscores.','err');return;}
+    ge('btnSaveUser').disabled=true;ge('btnSaveUser').textContent='Creating...';
+
+    var profileRole=role==='admin'?'admin':'stall';
+    var eventType=role==='foodfest'?'foodfest':'stall';
+    var res=await sb.rpc('create_user',{
+      p_admin_id:user.id,p_admin_token:user.token,
+      p_username:username,p_password:password,p_name:name||null,
+      p_role:profileRole,p_stall:stall||null,p_event_type:eventType
+    });
+    if(res.error){showUserMsg('Error: '+res.error.message,'err');ge('btnSaveUser').disabled=false;ge('btnSaveUser').textContent='Create user';return;}
+
+    showUserMsg('Created! Username: '+username+' / Password: '+password,'ok');
+    ge('btnSaveUser').disabled=false;ge('btnSaveUser').textContent='Create user';
+    sv('uUsername','');sv('uPassword','');sv('uName','');sv('uStall','');
+    await loadAll();renderUsers();
+  }
+
+  async function editUser(id){
+    var u=allProfiles.find(function(x){return x.id===id;});if(!u)return;
+    var uname=u.username||'—';
+    var newName=prompt('Display name:',u.name||'');if(newName===null)return;
+    var newStall=prompt('Stall name:',u.stall_name||'');if(newStall===null)return;
+    var currentType=u.event_type==='foodfest'?'foodfest':u.role==='admin'?'admin':'stall';
+    var newType=prompt('Account type (stall / foodfest / admin):',currentType);if(newType===null)return;
+    newType=newType.trim().toLowerCase();
+    if(!['stall','foodfest','admin'].includes(newType)){alert('Must be stall, foodfest, or admin.');return;}
+    var profileRole=newType==='admin'?'admin':'stall';
+    var eventType=newType==='foodfest'?'foodfest':'stall';
+    var r=await sb.rpc('update_user',{
+      p_admin_id:user.id,p_admin_token:user.token,
+      p_id:id,p_name:newName||null,p_stall:newStall||null,p_role:profileRole,p_event_type:eventType
+    });
+    if(r.error){alert('Error: '+r.error.message);return;}
+    var newPw=prompt('Reset password? Leave blank to keep the current one.','');
+    if(newPw){
+      var rp=await sb.rpc('reset_password',{p_admin_id:user.id,p_admin_token:user.token,p_id:id,p_new_password:newPw});
+      if(rp.error){alert('Password reset failed: '+rp.error.message);}
+    }
+    toast('User updated');await loadAll();renderUsers();renderStalls();
+  }
+
+  async function deleteUser(id,username){
+    if(!confirm('Delete user "'+username+'"? All their products and sales will also be deleted.'))return;
+    var r=await sb.rpc('delete_user',{p_admin_id:user.id,p_admin_token:user.token,p_id:id});
+    if(r.error){alert('Error: '+r.error.message);return;}
+    toast('User deleted');await loadAll();renderUsers();renderStalls();
+  }
+
+  function showUserMsg(msg,type){
+    var el=ge('userMsg');el.textContent=msg;
+    el.style.background=type==='ok'?'#eaf3de':'#fcebeb';
+    el.style.color=type==='ok'?'#3b6d11':'#a32d2d';
+    el.style.display='block';
+  }
+
+  async function saveSettings(){
+    var upd={
+      event_name:gv('cfgEvt'),event_date:gv('cfgDate')||null,
+      student_share:parseInt(ge('splitSlider').value),
+      currency:gv('cfgCur')||'AED',
+      charity_name:gv('cfgCharity'),
+      updated_at:new Date().toISOString()
+    };
+    var r=await sb.from('global_config').update(upd).eq('id',1);
+    if(r.error){alert('Error saving: '+r.error.message);return;}
+    gcfg=Object.assign(gcfg,upd);applyConfig();toast('Settings saved');
+  }
+
+  window.ADMIN={
+    editUser:function(id){editUser(id);},
+    deleteUser:function(id,u){deleteUser(id,u);}
+  };
+
+  init();
+})();
+</script>
+</body>
+</html>
